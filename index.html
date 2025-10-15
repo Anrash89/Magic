@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Школа Магии</title>
+    <!-- Подключение Tailwind CSS для быстрой и адаптивной верстки -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Подключение скрипта Telegram Web App -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Подключение кастомных шрифтов для магической атмосферы -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cinzel+Decorative:wght@400;700&family=EB+Garamond:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        /* Применение кастомных шрифтов */
+        body {
+            font-family: 'EB Garamond', serif; /* Новый элегантный и читаемый шрифт */
+            overscroll-behavior: none; /* Убираем "оттягивание" страницы на мобильных */
+            background-color: #EAE0CF; /* Более темный фон для контраста */
+            color: #4E4234; /* Новый основной цвет текста */
+        }
+        .font-magic {
+            font-family: 'Cinzel Decorative', cursive;
+        }
+        /* Стили для плавного появления */
+        .fade-in { animation: fadeIn 0.5s ease-in-out forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: scale(0.98); } to { opacity: 1; transform: scale(1); } }
+        /* Стили для пропадания */
+        .fade-out { animation: fadeOut 0.5s ease-in-out forwards; }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+        /* Кастомный скроллбар для светлой темы */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #e9dccb; }
+        ::-webkit-scrollbar-thumb { background: #B8860B; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #a0760a; }
+
+        #loading-screen {
+            background-color: #FDF2E0; /* Фон под видео для бесшовности */
+        }
+        .aspect-16-9 {
+            aspect-ratio: 16 / 9;
+        }
+
+        /* Анимация для плавного высветления видео */
+        .fade-to-color {
+            animation: fadeToColorAnim 3s ease-in forwards;
+        }
+        @keyframes fadeToColorAnim {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+
+        /* ИЗМЕНЕНО: Стиль для "замыливания" краев картинки опроса стал мягче */
+        .survey-image-container::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            /* Уменьшен spread (второе значение) и увеличен blur (первое) для более мягкого перехода */
+            box-shadow: inset 0 0 30px 10px #FDF2E0;
+            pointer-events: none;
+            border-radius: 0.5rem; /* Синхронизируем с радиусом картинки */
+        }
+        .survey-input {
+            border: 2px solid #e9dccb;
+            background-color: #fff;
+            transition: all 0.3s;
+        }
+        .survey-input:focus {
+            border-color: #B8860B;
+            box-shadow: 0 0 0 3px rgba(184, 134, 11, 0.2);
+            outline: none;
+        }
+    </style>
+</head>
+<body class="overflow-hidden">
+
+    <!-- 1. ЭКРАН ЗАГРУЗКИ С ВИДЕО -->
+    <div id="loading-screen" class="fixed inset-0 z-50">
+        <video
+            id="intro-video"
+            src="intro.mp4"
+            autoplay
+            muted
+            playsinline
+            class="absolute inset-0 w-full h-full object-cover z-0">
+        </video>
+        <div id="video-fade-overlay" class="absolute inset-0 bg-[#FDF2E0] opacity-0 z-10"></div>
+        <div id="unmute-button" class="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer transition-opacity duration-300 z-20">
+            <div class="text-center text-white p-4 rounded-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                </svg>
+                <p class="mt-2 text-lg">Нажмите, чтобы включить звук</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. ОСНОВНОЙ КОНТЕЙНЕР ПРИЛОЖЕНИЯ (Книжный макет) -->
+    <div class="max-w-2xl mx-auto h-screen bg-[#FDF2E0] shadow-2xl shadow-black/20 flex flex-col relative">
+        <div id="main-content" class="hidden h-full flex flex-col">
+
+            <!-- ЭКРАН ОПРОСА (изначально скрыт) -->
+            <div id="survey-view" class="hidden p-4 sm:p-6 flex-grow flex flex-col h-full">
+                <!-- Сюда будут вставляться шаги опроса -->
+            </div>
+
+            <!-- ЭКРАН ВЫБОРА НАБОРА (изначально скрыт) -->
+            <div id="sets-view" class="hidden p-4 sm:p-6 flex-grow flex flex-col">
+                <header class="text-center mb-6">
+                    <h1 class="font-magic text-3xl sm:text-4xl text-[#B8860B] tracking-wider">Школа Магии</h1>
+                    <p class="text-gray-600 mt-2 text-lg">Выберите Ваш набор фокусов</p>
+                </header>
+                <main id="sets-list-container" class="flex-grow flex flex-col gap-6 overflow-y-auto pr-2">
+                    <!-- Сюда будут динамически добавляться наборы из JS -->
+                </main>
+            </div>
+
+            <!-- ЭКРАН СПИСКА УРОКОВ (изначально скрыт) -->
+            <div id="lessons-view" class="hidden flex-grow flex flex-col h-full">
+                <header class="sticky top-0 bg-[#FDF2E0] bg-opacity-90 backdrop-blur-sm z-10 p-4">
+                    <button id="back-to-sets-button" class="flex items-center text-[#B8860B] hover:text-[#a0760a] transition-colors mb-4 p-2 -ml-2 rounded-full hover:bg-white/50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                        <span class="text-lg">Назад</span>
+                    </button>
+                    <h2 id="lesson-set-title" class="font-magic text-2xl sm:text-3xl text-[#B8860B] text-center"></h2>
+                </header>
+                <main id="lessons-list" class="flex-grow overflow-y-auto px-4 space-y-1">
+                    <!-- Сюда будут динамически добавляться уроки -->
+                </main>
+            </div>
+
+            <!-- ЭКРАН ДЕТАЛЕЙ УРОКА (изначально скрыт) -->
+            <div id="lesson-detail-view" class="hidden flex-grow flex flex-col h-full p-4 sm:p-6">
+                <header class="mb-4 flex-shrink-0">
+                    <button id="back-to-lessons-button" class="flex items-center text-[#B8860B] hover:text-[#a0760a] transition-colors p-2 -ml-2 rounded-full hover:bg-white/50">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 mr-1" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" /></svg>
+                        <span class="text-lg">К урокам</span>
+                    </button>
+                </header>
+                <main class="flex-grow flex flex-col items-center gap-6 overflow-y-auto pb-4">
+                    <div class="w-full rounded-lg overflow-hidden shadow-lg relative survey-image-container">
+                        <img id="lesson-detail-image" src="" alt="Превью урока" class="w-full h-auto object-cover rounded-lg">
+                    </div>
+                    <h2 id="lesson-detail-title" class="font-magic text-2xl sm:text-3xl text-center text-[#4E4234] flex-shrink-0"></h2>
+                    <div class="w-full mt-auto pt-4 flex-shrink-0">
+                         <button id="watch-lesson-button" class="w-full max-w-sm mx-auto bg-[#B8860B] text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-[#a0760a] transition-transform duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-3">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 001.553.832l3-2a1 1 0 000-1.664l-3-2z" /></svg>
+                            <span>Посмотреть урок</span>
+                        </button>
+                    </div>
+                </main>
+            </div>
+        </div>
+    </div>
+
+    <!-- МОДАЛЬНОЕ ОКНО С ПОЛИТИКОЙ КОНФИДЕНЦИАЛЬНОСТИ -->
+    <div id="policy-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-[#FDF2E0] rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
+            <h2 class="font-magic text-2xl text-center p-4 border-b border-[#e9dccb]">Политика конфиденциальности</h2>
+            <div class="overflow-y-auto p-6 text-sm space-y-3">
+                <p class="font-bold">Дата публикации действующей редакции: 1 сентября 2025 года</p>
+                <h3 class="font-bold text-base pt-2">1. Общие положения, стороны, цель документа</h3>
+                <p>1.1. Настоящая Политика конфиденциальности и обработки персональных данных (далее – «Политика») определяет порядок и условия обработки индивидуальным предпринимателем Таранюком Русланом Жановичем, действующим по законодательству Российской Федерации (далее – «Оператор» либо «Мы»), информации о физическом лице, которая может быть получена Оператором от этого физического лица либо его законного представителя (далее – «Пользователь», «Субъект персональных данных» либо «Вы»).</p>
+                <p>1.2. Политика регулирует отношения, возникающие при использовании Пользователем Telegram-ботов, закрытых чатов, веб-страниц и иных сервисов проекта «Секретный клуб волшебников».</p>
+                <p>1.3. Цель Политики — обеспечение надлежащего правового режима персональных данных, защита прав и свобод Пользователей, а также выполнение требований Федерального закона № 152-ФЗ «О персональных данных».</p>
+                <h3 class="font-bold text-base pt-2">2. Правовые основания обработки</h3>
+                <p>2.1. Обработка персональных данных осуществляется на основании: согласия Пользователя (ст. 6 ФЗ-152); договорных отношений (оферта, соглашение, акцепт условий участия в проекте); иных правовых оснований, предусмотренных законодательством РФ.</p>
+                <p>2.2. Согласие Пользователь выражает свободно и явно, например: нажатием кнопки «Продолжить» в Telegram-боте; установкой галочки «Согласен с Политикой конфиденциальности»; участием в опросах, челленджах, активностях в рамках проекта.</p>
+                <h3 class="font-bold text-base pt-2">3. Правила обработки персональных данных</h3>
+                <p>3.1. Цели обработки: предоставление доступа к сервисам проекта; идентификация и обратная связь с Пользователями; проведение мероприятий, челленджей, опросов; анализ предпочтений и интересов Пользователей для улучшения сервиса; маркетинговые и статистические исследования; информирование о новостях, обновлениях, акциях; выполнение договорных обязательств.</p>
+                <p>3.2. Категории данных: Оператор может обрабатывать следующие персональные данные: имя, возраст, пол; Telegram ID и никнейм; контактные данные (телефон, e-mail — если предоставлены); ответы Пользователя на вопросы и опросы; информация об интересах и предпочтениях (например, количество освоенных фокусов, участие в челленджах); изображения, видеозаписи, голос (если Пользователь сам отправил медиа или участвовал в трансляции/опросе). (Таким образом, любые будущие данные, которые Пользователь предоставит добровольно в рамках сервиса, также подпадают под действие этой Политики.)</p>
+                <p>3.3. Способы обработки: Сбор, запись, систематизация, хранение, уточнение, использование, обезличивание, передача, блокирование, удаление, уничтожение.</p>
+                <p>3.4. Сроки хранения: Персональные данные хранятся до: отзыва согласия Пользователем; либо 5 (пяти) лет с момента последнего взаимодействия.</p>
+                <p>3.5. Уничтожение данных: При достижении целей или отзыве согласия данные уничтожаются с составлением акта.</p>
+                <p>3.6. Cookies: При использовании веб-страниц проекта (например, Taplink, сайт) могут применяться файлы cookie. Пользователь может отключить их самостоятельно в настройках браузера.</p>
+                <h3 class="font-bold text-base pt-2">4. Права и обязанности</h3>
+                <p>4.1. Пользователь имеет право: получать информацию об обработке его персональных данных; требовать исправления или удаления данных; отзывать согласие на обработку; направлять запросы и жалобы на e-mail Оператора.</p>
+                <p>4.2. Оператор обязуется: обрабатывать данные строго в соответствии с заявленными целями; принимать технические и организационные меры защиты; не передавать данные третьим лицам без законных оснований или согласия Пользователя.</p>
+                <h3 class="font-bold text-base pt-2">5. Хранение и передача данных</h3>
+                <p>5.1. Персональные данные граждан РФ хранятся в базах данных, расположенных на территории Российской Федерации.</p>
+                <p>5.2. При использовании сервисов третьих лиц (например, Google Sheets, Cloud-сервисов) возможна трансграничная передача данных. Оператор принимает меры по защите прав Пользователей и уведомляет уполномоченный орган, если это требуется по закону.</p>
+                <p>5.3. Передача данных допускается: по требованию суда и госорганов; для защиты прав и интересов Оператора и Пользователей; при согласии Пользователя.</p>
+                <h3 class="font-bold text-base pt-2">6. Изменение Политики</h3>
+                <p>6.1. Оператор имеет право изменять Политику. Новая редакция размещается с указанием даты обновления.</p>
+                <p>6.2. Действующая редакция Политики всегда доступна по ссылке в Telegram-боте.</p>
+                <h3 class="font-bold text-base pt-2">7. Реквизиты Оператора</h3>
+                <p>Индивидуальный предприниматель Таранюк Руслан Жанович<br>ИНН: 540863428069<br>ОГРНИП: 316547600142877<br>Адрес: 640001, Курганская область, городской округ город Курган, город Курган, улица Коли Мяготина, дом 91, кв. 17<br>Тел.: +7 (953) 884-96-73<br>E-mail: taruslan@mail.ru</p>
+            </div>
+            <div class="p-4 border-t border-[#e9dccb] text-center">
+                <button id="policy-agree-button" class="bg-[#B8860B] text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-[#a0760a] transition-colors">Согласен</button>
+            </div>
+        </div>
+    </div>
+
+     <!-- МОДАЛЬНОЕ ОКНО "НЕСОГЛАСИЕ С ПОЛИТИКОЙ" -->
+    <div id="disagree-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+        <div class="bg-[#FDF2E0] rounded-lg shadow-2xl max-w-sm w-full p-6 text-center">
+            <h2 class="font-magic text-2xl mb-4">Очень жаль!</h2>
+            <p class="mb-6">К сожалению, без согласия на обработку данных мы не можем предоставить вам доступ к Школе Магии.</p>
+            <div class="flex flex-col gap-4">
+                <button id="disagree-agree-button" class="bg-[#B8860B] text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-[#a0760a] transition-colors">Я согласен с политикой</button>
+                <button id="disagree-close-button" class="bg-gray-300 text-gray-800 font-bold py-3 px-8 rounded-lg text-lg hover:bg-gray-400 transition-colors">Закрыть приложение</button>
+            </div>
+        </div>
+    </div>
+
+
+<script>
+    // --- ДАННЫЕ О НАБОРАХ И УРОКАХ ---
+    const magicSets = [
+        {
+            id: 'set1',
+            name: 'Набор "75 лучших фокусов"',
+            image: 'images/set1.jpg',
+            lessons: [
+                { id: 's1l1', name: 'Фокус с волшебной палочкой и горшочком', image: 'images/02.webp' },
+                { id: 's1l2', name: 'Фокус с волшебной палочкой и сердечком №1', image: 'images/03.webp' },
+                { id: 's1l3', name: 'Фокус с волшебной палочкой №1', image: 'images/04.webp' },
+                { id: 's1l4', name: 'Фокус с волшебной палочкой и сердечком №2', image: 'images/05.webp' },
+                { id: 's1l5', name: 'Фокус с волшебной палочкой №2', image: 'images/06.webp' },
+                { id: 's1l6', name: 'Фокус с волшебной палочкой №3', image: 'images/07.webp' },
+                { id: 's1l7', name: 'Фокус с сердечками №1', image: 'images/08.webp' },
+                { id: 's1l8', name: 'Фокус с башенкой с шариком', image: 'images/09.webp' },
+                { id: 's1l9', name: 'Фокус с разделителем верёвки', image: 'images/10.webp' },
+                { id: 's1l10', name: 'Фокус с верёвкой №1', image: 'images/11.webp' },
+                { id: 's1l11', name: 'Фокус с разноцветными платками', image: 'images/12.webp' },
+                { id: 's1l12', name: 'Фокус с платком и напальчником', image: 'images/13.webp' },
+                { id: 's1l13', name: 'Фокус с сердечками №2', image: 'images/14.webp' },
+                { id: 's1l14', name: 'Фокус с сердечками №3', image: 'images/15.webp' },
+                { id: 's1l15', name: 'Фокус с сердечками №4', image: 'images/16.webp' },
+                { id: 's1l16', name: 'Фокус с сердечками №5', image: 'images/17.webp' },
+                { id: 's1l17', name: 'Фокус с числовыми картами', image: 'images/18.webp' },
+                { id: 's1l18', name: 'Фокус с баночкой с кубиками', image: 'images/19.webp' },
+                { id: 's1l19', name: 'Фокус с игральным кубиком', image: 'images/20.webp' },
+                { id: 's1l20', name: 'Фокус с двойными картами', image: 'images/21.webp' },
+                { id: 's1l21', name: 'Фокус с картой со створкой', image: 'images/22.webp' },
+                { id: 's1l22', name: 'Фокус со сложенной купюрой', image: 'images/23.webp' },
+                { id: 's1l23', name: 'Фокус с картой и купюрой', image: 'images/24.webp' },
+                { id: 's1l24', name: 'Фокус с купюрой', image: 'images/25.webp' },
+                { id: 's1l25', name: 'Фокус с купюрой со скрепками', image: 'images/26.webp' },
+                { id: 's1l26', name: 'Фокус со скрепками', image: 'images/27.webp' },
+                { id: 's1l27', name: 'Фокус со стаканами и шариками', image: 'images/28.webp' },
+                { id: 's1l28', name: 'Фокус с кольцом и цепочкой', image: 'images/29.webp' },
+                { id: 's1l29', name: 'Фокус с монеткой №1', image: 'images/30.webp' },
+                { id: 's1l30', name: 'Фокус с резинкой и скрепкой №1', image: 'images/31.webp' },
+                { id: 's1l31', name: 'Фокус с резинкой и скрепкой №2', image: 'images/32.webp' },
+                { id: 's1l32', name: 'Фокус с резинками №1', image: 'images/33.webp' },
+                { id: 's1l33', name: 'Фокус с резинками №2', image: 'images/34.webp' },
+                { id: 's1l34', name: 'Фокус с резинками и купюрой', image: 'images/35.webp' },
+                { id: 's1l35', name: 'Фокус с резинкой и купюрой', image: 'images/36.webp' },
+                { id: 's1l36', name: 'Фокус с резинкой', image: 'images/37.webp' },
+                { id: 's1l37', name: 'Фокус с резинками №3', image: 'images/38.webp' },
+                { id: 's1l38', name: 'Фокус с резинками №4', image: 'images/39.webp' },
+                { id: 's1l39', name: 'Фокус с резинками №5', image: 'images/40.webp' },
+                { id: 's1l40', name: 'Фокус с картой с леской и спичкой', image: 'images/41.webp' },
+                { id: 's1l41', name: 'Фокус с верёвкой и спичечным коробком', image: 'images/42.webp' },
+                { id: 's1l42', name: 'Фокус со спичечным коробком №1', image: 'images/43.webp' },
+                { id: 's1l43', name: 'Три загадки со спичками', image: 'images/44.webp' },
+                { id: 's1l44', name: 'Фокус со спичкой №1', image: 'images/45.webp' },
+                { id: 's1l45', name: 'Фокус со спичкой №2', image: 'images/46.webp' },
+                { id: 's1l46', name: 'Фокус со спичечным коробком №2', image: 'images/47.webp' },
+                { id: 's1l47', name: 'Фокус со спичечным коробком и воздушным шариком', image: 'images/48.webp' },
+                { id: 's1l48', name: 'Фокус с воздушным шариком', image: 'images/49.webp' },
+                { id: 's1l49', name: 'Фокус с монеткой и стаканом №1', image: 'images/50.webp' },
+                { id: 's1l50', name: 'Фокус с монеткой №2', image: 'images/51.webp' },
+                { id: 's1l51', name: 'Фокус с монеткой и стаканом №2', image: 'images/52.webp' },
+                { id: 's1l52', name: 'Фокус с карандашом №1', image: 'images/53.webp' },
+                { id: 's1l53', name: 'Фокус с волшебной палочкой №4', image: 'images/54.webp' },
+                { id: 's1l54', name: 'Фокус с разноцветными предметами', image: 'images/55.webp' },
+                { id: 's1l55', name: 'Фокус со стаканами и предсказанием №1', image: 'images/56.webp' },
+                { id: 's1l56', name: 'Фокус со стаканами и предсказанием №2', image: 'images/57.webp' },
+                { id: 's1l57', name: 'Фокус с использованием рук №1', image: 'images/58.webp' },
+                { id: 's1l58', name: 'Фокус с использованием рук №2', image: 'images/59.webp' },
+                { id: 's1l59', name: 'Фокус со стаканом с жидкостью', image: 'images/60.webp' },
+                { id: 's1l60', name: 'Фокус с напальчником', image: 'images/61.webp' },
+                { id: 's1l61', name: 'Фокус с использованием пальцев №1', image: 'images/62.webp' },
+                { id: 's1l62', name: 'Фокус с использованием пальцев №2', image: 'images/63.webp' },
+                { id: 's1l63', name: 'Фокус с использованием пальцев №3', image: 'images/64.webp' },
+                { id: 's1l64', name: 'Фокус с использованием пальцев №4', image: 'images/65.webp' },
+                { id: 's1l65', name: 'Фокус с использованием пальцев №5', image: 'images/66.webp' },
+                { id: 's1l66', name: 'Фокус с листом бумаги', image: 'images/67.webp' },
+                { id: 's1l67', name: 'Три способа достать купюру из-под бутылки', image: 'images/68.webp' },
+                { id: 's1l68', name: 'Фокус с верёвкой №2', image: 'images/69.webp' },
+                { id: 's1l69', name: 'Фокус с карандашом №2', image: 'images/70.webp' },
+                { id: 's1l70', name: 'Фокус с использованием пальцев №6', image: 'images/71.webp' },
+                { id: 's1l71', name: 'Фокус с монеткой №3', image: 'images/72.webp' },
+                { id: 's1l72', name: 'Фокус с иллюзией левитации', image: 'images/73.webp' },
+                { id: 's1l73', name: 'Фокус с вопросами', image: 'images/74.webp' },
+                { id: 's1l74', name: 'Фокус с числами', image: 'images/75.webp' },
+                { id: 's1l75', name: 'Фокус с кольцом', image: 'images/76.webp' },
+            ]
+        },
+        {
+            id: 'set2',
+            name: 'Набор "10 взрывных фокусов" (жёлтый)',
+            image: 'images/set2.jpg',
+            lessons: [
+                { id: 's2l1', name: 'Фокус с разделителем верёвки', image: 'images/set2/201.webp' },
+                { id: 's2l2', name: 'Фокус с разноцветными платками', image: 'images/set2/202.webp' },
+                { id: 's2l3', name: 'Фокус с баночкой с кубиками', image: 'images/set2/203.webp' },
+                { id: 's2l4', name: 'Фокус с купюрой со скрепками', image: 'images/set2/204.webp' },
+                { id: 's2l5', name: 'Фокус с карточкой клоуна', image: 'images/set2/205.webp' },
+                { id: 's2l6', name: 'Фокус с резинкой №1', image: 'images/set2/206.webp' },
+                { id: 's2l7', name: 'Фокус с резинками №1', image: 'images/set2/207.webp' },
+                { id: 's2l8', name: 'Фокус с калькулятором', image: 'images/set2/208.webp' },
+                { id: 's2l9', name: 'Фокус с резинкой №2', image: 'images/set2/209.webp' },
+                { id: 's2l10', name: 'Фокус с резинками №2', image: 'images/set2/210.webp' }
+            ]
+        },
+        {
+            id: 'set3',
+            name: 'Набор "10 взрывных фокусов" (зелёный)',
+            image: 'images/set3.jpg',
+            lessons: [
+                { id: 's3l1', name: 'Фокус со стаканами и шариками', image: 'images/set3/301.webp' },
+                { id: 's3l2', name: 'Фокус с картой с леской и спичкой', image: 'images/set3/302.webp' },
+                { id: 's3l3', name: 'Фокус с печеньем', image: 'images/set3/303.webp' },
+                { id: 's3l4', name: 'Фокус с волшебной тростью', image: 'images/set3/304.webp' },
+                { id: 's3l5', name: 'Фокус с карточкой сердечка', image: 'images/set3/305.webp' },
+                { id: 's3l6', name: 'Фокус с резинкой №1', image: 'images/set3/306.webp' },
+                { id: 's3l7', name: 'Фокус с резинками №1', image: 'images/set3/307.webp' },
+                { id: 's3l8', name: 'Фокус с резинками №2', image: 'images/set3/308.webp' },
+                { id: 's3l9', name: 'Фокус с резинкой №2', image: 'images/set3/309.webp' },
+                { id: 's3l10', name: 'Фокус с использованием рук', image: 'images/set3/310.webp' },
+                { id: 's3l11', name: 'Фокус с калькулятором', image: 'images/set3/311.webp' }
+            ]
+        },
+        {
+            id: 'set4',
+            name: 'Набор "10 взрывных фокусов" (синий)',
+            image: 'images/set4.jpg',
+            lessons: [
+                { id: 's4l1', name: 'Фокус с башенкой с шариком', image: 'images/set4/401.webp' },
+                { id: 's4l2', name: 'Фокус с платком и напальчником', image: 'images/set4/402.webp' },
+                { id: 's4l3', name: 'Фокус с двойными картами', image: 'images/set4/403.webp' },
+                { id: 's4l4', name: 'Фокус с карточкой “Дай пять”', image: 'images/set4/404.webp' },
+                { id: 's4l5', name: 'Фокус с колодой в футляре', image: 'images/set4/405.webp' },
+                { id: 's4l6', name: 'Фокус с купюрой и бумажкой №1', image: 'images/set4/406.webp' },
+                { id: 's4l7', name: 'Фокус с купюрой и бумажкой №2', image: 'images/set4/407.webp' },
+                { id: 's4l8', name: 'Фокус с резинкой №1', image: 'images/set4/408.webp' },
+                { id: 's4l9', name: 'Фокус с использованием рук', image: 'images/set4/409.webp' },
+                { id: 's4l10', name: 'Фокус с резинкой №2', image: 'images/set4/410.webp' },
+                { id: 's4l11', name: 'Фокус с резинкой №3', image: 'images/set4/411.webp' }
+            ]
+        },
+        {
+            id: 'set5',
+            name: 'Набор "10 взрывных фокусов" (красный)',
+            image: 'images/set5.jpg',
+            lessons: [
+                { id: 's5l1', name: 'Фокус с числовыми картами', image: 'images/set5/501.webp' },
+                { id: 's5l2', name: 'Фокус с кольцом и цепочкой', image: 'images/set5/502.webp' },
+                { id: 's5l3', name: 'Фокус с кошельком с картами', image: 'images/set5/503.webp' },
+                { id: 's5l4', name: 'Фокус с баночкой с кубиком', image: 'images/set5/504.webp' },
+                { id: 's5l5', name: 'Фокус с поролоновыми шариками и кубиком №1', image: 'images/set5/505.webp' },
+                { id: 's5l6', name: 'Фокус с поролоновыми шариками №1', image: 'images/set5/506.webp' },
+                { id: 's5l7', name: 'Фокус с поролоновыми шариками №2', image: 'images/set5/507.webp' },
+                { id: 's5l8', name: 'Фокус с поролоновыми шариками №3', image: 'images/set5/508.webp' },
+                { id: 's5l9', name: 'Фокус с поролоновыми шариками и кубиком №2', image: 'images/set5/509.webp' },
+                { id: 's5l10', name: 'Фокус с выбором предмета', image: 'images/set5/510.webp' },
+                { id: 's5l11', name: 'Фокус с резинками', image: 'images/set5/511.webp' },
+                { id: 's5l12', name: 'Фокус с резинками и прищепкой', image: 'images/set5/512.webp' },
+                { id: 's5l13', name: 'Фокус с кольцом и монеткой', image: 'images/set5/513.webp' },
+                { id: 's5l14', name: 'Фокус с резинками', image: 'images/set5/514.webp' }
+            ]
+        }
+    ];
+
+    document.addEventListener('DOMContentLoaded', () => {
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И КОНСТАНТЫ ---
+
+        // !!! ВАЖНО: Замените эту ссылку на URL вашего опубликованного Google Apps Script.
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSBegPmiE4OGY8ZalZpu301oiojA-D9O9tO-SDT8KH9ImGa1alejmevzVZXIDkD5ew0w/exec'; // <-- ВАША ССЫЛКА ЗДЕСЬ
+
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand(); 
+        
+        const user = tg.initDataUnsafe?.user || { id: 123456, username: 'testuser' }; // Для локального тестирования
+
+        const loadingScreen = document.getElementById('loading-screen');
+        const introVideo = document.getElementById('intro-video');
+        const unmuteButton = document.getElementById('unmute-button');
+        const videoFadeOverlay = document.getElementById('video-fade-overlay');
+        const mainContent = document.getElementById('main-content');
+        
+        const surveyView = document.getElementById('survey-view');
+        const setsView = document.getElementById('sets-view');
+        const lessonsView = document.getElementById('lessons-view');
+        const lessonDetailView = document.getElementById('lesson-detail-view');
+
+        const setsListContainer = document.getElementById('sets-list-container');
+        const lessonsList = document.getElementById('lessons-list');
+        const lessonSetTitle = document.getElementById('lesson-set-title');
+        
+        const backToSetsButton = document.getElementById('back-to-sets-button');
+        const backToLessonsButton = document.getElementById('back-to-lessons-button');
+        
+        const lessonDetailImage = document.getElementById('lesson-detail-image');
+        const lessonDetailTitle = document.getElementById('lesson-detail-title');
+        const watchLessonButton = document.getElementById('watch-lesson-button');
+
+        const policyModal = document.getElementById('policy-modal');
+        const policyAgreeButton = document.getElementById('policy-agree-button');
+        const disagreeModal = document.getElementById('disagree-modal');
+        const disagreeAgreeButton = document.getElementById('disagree-agree-button');
+        const disagreeCloseButton = document.getElementById('disagree-close-button');
+
+        let currentSetId = null;
+        let mainTransitionTimeout = null;
+        const surveyData = {};
+
+        // --- ЛОГИКА ЗАГРУЗОЧНОГО ЭКРАНА ---
+        function transitionToApp() {
+            if (mainTransitionTimeout) clearTimeout(mainTransitionTimeout);
+            if (!loadingScreen) return;
+            
+            loadingScreen.classList.add('fade-out');
+            loadingScreen.addEventListener('animationend', () => {
+                if (loadingScreen) loadingScreen.remove();
+                mainContent.classList.remove('hidden');
+                mainContent.classList.add('fade-in');
+                document.body.classList.remove('overflow-hidden');
+                checkSurveyCompletion();
+            }, { once: true });
+        }
+
+        unmuteButton.addEventListener('click', () => {
+            introVideo.muted = false;
+            unmuteButton.classList.add('fade-out');
+            unmuteButton.addEventListener('animationend', () => unmuteButton.style.display = 'none', { once: true });
+            introVideo.play();
+        }, { once: true });
+        
+        introVideo.addEventListener('loadedmetadata', () => {
+            const videoDuration = introVideo.duration;
+            const fadeStart = videoDuration - 3; 
+            if (fadeStart > 0) setTimeout(() => videoFadeOverlay.classList.add('fade-to-color'), fadeStart * 1000);
+        });
+
+        introVideo.addEventListener('ended', transitionToApp);
+        mainTransitionTimeout = setTimeout(transitionToApp, 8000);
+
+
+        // --- ЛОГИКА ОПРОСА И ИНТЕГРАЦИИ С GOOGLE SHEETS ---
+        async function checkSurveyCompletion() {
+            // В реальном приложении раскомментируйте блок try-catch
+            /* try {
+                const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=check&userId=${user.id}`);
+                const result = await response.json();
+                if (result.completed) {
+                    showSetsView();
+                } else {
+                    showSurveyStep(1);
+                }
+            } catch (error) {
+                console.error('Ошибка при проверке опроса:', error);
+                // Если сервис недоступен, показываем опрос.
+                showSurveyStep(1);
+            }
+            */
+            // Для тестирования всегда показываем опрос. Удалите эту строку в продакшене.
+            showSurveyStep(1); 
+        }
+
+        async function submitSurvey() {
+            const formData = new FormData();
+            formData.append('telegramId', user.id);
+            formData.append('username', user.username || 'не указан');
+            formData.append('name', surveyData.name);
+            formData.append('age', surveyData.age);
+            formData.append('tricks', surveyData.tricks);
+
+            // В реальном приложении раскомментируйте блок try-catch
+            /*
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: formData,
+                });
+            } catch (error) {
+                console.error('Ошибка при отправке опроса:', error);
+            }
+            */
+           console.log('Данные для отправки:', Object.fromEntries(formData)); // Для теста
+           showSetsView();
+        }
+
+
+        // --- ШАБЛОНЫ И ЛОГИКА ОТОБРАЖЕНИЯ ОПРОСА ---
+        function getSurveyStepHTML(step) {
+            switch(step) {
+                case 1: // Возраст
+                    return `
+                        <div class="flex-grow flex flex-col items-center justify-center text-center gap-6">
+                            <div class="w-full max-w-xs relative survey-image-container"><img src="images/survey/1.jpg" class="w-full h-auto rounded-lg"></div>
+                            <h2 class="text-xl font-semibold">Вам есть 14 лет?</h2>
+                            <p class="text-gray-600 -mt-4">Если нет — нужно согласие родителей.</p>
+                            <div class="w-full flex flex-col gap-4 max-w-sm">
+                                <button data-action="next-step" data-step="2" class="w-full bg-white/80 p-4 rounded-lg text-lg font-semibold hover:bg-white transition-colors">Да, мне 14+</button>
+                                <button data-action="next-step" data-step="2" class="w-full bg-white/80 p-4 rounded-lg text-lg font-semibold hover:bg-white transition-colors">До 14, согласие есть</button>
+                            </div>
+                        </div>
+                    `;
+                case 2: // Политика
+                    return `
+                        <div class="flex-grow flex flex-col items-center justify-center text-center gap-6">
+                            <div class="w-full max-w-xs relative survey-image-container"><img src="images/survey/2.jpg" class="w-full h-auto rounded-lg"></div>
+                            <h2 class="text-xl font-semibold">Политика и обработка персональных данных</h2>
+                            <p class="text-gray-600 -mt-4 max-w-md">Нажимая "Продолжить", вы соглашаетесь с обработкой персональных данных в соотвествии с Политикой конфиденциальности.</p>
+                            <div class="w-full flex flex-col gap-4 max-w-sm">
+                                <button data-action="next-step" data-step="3" class="w-full bg-[#B8860B] text-white p-4 rounded-lg text-lg font-semibold hover:bg-[#a0760a] transition-colors">Продолжить</button>
+                                <button data-action="show-policy" class="w-full bg-white/80 p-4 rounded-lg text-lg font-semibold hover:bg-white transition-colors">Ознакомиться</button>
+                                <button data-action="disagree" class="w-full text-gray-500 p-2 rounded-lg text-base hover:text-gray-800 transition-colors">Не согласен</button>
+                            </div>
+                        </div>
+                    `;
+                 case 3: // Имя
+                    return `
+                        <div class="flex-grow flex flex-col items-center justify-center text-center gap-6">
+                             <div class="w-full max-w-xs relative survey-image-container"><img src="images/survey/3.jpg" class="w-full h-auto rounded-lg"></div>
+                            <h2 class="text-xl font-semibold">Как можно к тебе обращаться?</h2>
+                            <p class="text-gray-600 -mt-4 max-w-md">Чтобы получить доступ к бесплатным видеоурокам, ответьте на три вопроса.</p>
+                            <div class="w-full flex flex-col gap-4 max-w-sm">
+                                <input id="survey-name" type="text" placeholder="Ваше имя" class="w-full p-4 rounded-lg text-lg text-center survey-input">
+                                <button data-action="save-text" data-step="4" data-input="survey-name" data-key="name" class="w-full bg-[#B8860B] text-white p-4 rounded-lg text-lg font-semibold hover:bg-[#a0760a] transition-colors">Далее</button>
+                            </div>
+                        </div>
+                    `;
+                case 4: // Возраст (число)
+                    return `
+                         <div class="flex-grow flex flex-col items-center justify-center text-center gap-6">
+                             <div class="w-full max-w-xs relative survey-image-container"><img src="images/survey/4.jpg" class="w-full h-auto rounded-lg"></div>
+                             <h2 class="text-xl font-semibold">Сколько тебе лет?</h2>
+                             <div class="w-full flex flex-col gap-4 max-w-sm">
+                                 <input id="survey-age" type="number" placeholder="Ваш возраст" class="w-full p-4 rounded-lg text-lg text-center survey-input">
+                                 <button data-action="save-text" data-step="5" data-input="survey-age" data-key="age" class="w-full bg-[#B8860B] text-white p-4 rounded-lg text-lg font-semibold hover:bg-[#a0760a] transition-colors">Далее</button>
+                             </div>
+                         </div>
+                    `;
+                case 5: // Опыт
+                     return `
+                         <div class="flex-grow flex flex-col items-center justify-center text-center gap-6">
+                             <div class="w-full max-w-xs relative survey-image-container"><img src="images/survey/5.jpg" class="w-full h-auto rounded-lg"></div>
+                             <h2 class="text-xl font-semibold">Сколько фокусов ты уже знаешь?</h2>
+                             <div class="w-full flex flex-col gap-4 max-w-sm">
+                                 <input id="survey-tricks" type="number" placeholder="Количество" class="w-full p-4 rounded-lg text-lg text-center survey-input">
+                                 <button data-action="save-text-final" data-input="survey-tricks" data-key="tricks" class="w-full bg-[#B8860B] text-white p-4 rounded-lg text-lg font-semibold hover:bg-[#a0760a] transition-colors">Завершить</button>
+                             </div>
+                         </div>
+                    `;
+            }
+            return '';
+        }
+
+        function showSurveyStep(step) {
+            surveyView.innerHTML = getSurveyStepHTML(step);
+            surveyView.classList.remove('hidden');
+            setsView.classList.add('hidden');
+        }
+
+        surveyView.addEventListener('click', (e) => {
+            const target = e.target.closest('button');
+            if (!target) return;
+
+            const { action, step, input, key } = target.dataset;
+
+            switch(action) {
+                case 'next-step':
+                    showSurveyStep(parseInt(step));
+                    break;
+                case 'show-policy':
+                    policyModal.classList.remove('hidden');
+                    break;
+                case 'disagree':
+                    disagreeModal.classList.remove('hidden');
+                    break;
+                case 'save-text': {
+                    const inputEl = document.getElementById(input);
+                    if (inputEl.value.trim() === '') {
+                        inputEl.classList.add('border-red-500');
+                        return;
+                    }
+                    surveyData[key] = inputEl.value;
+                    showSurveyStep(parseInt(step));
+                    break;
+                }
+                case 'save-text-final': {
+                    const inputEl = document.getElementById(input);
+                     if (inputEl.value.trim() === '') {
+                        inputEl.classList.add('border-red-500');
+                        return;
+                    }
+                    surveyData[key] = inputEl.value;
+                    submitSurvey();
+                    break;
+                }
+            }
+        });
+
+        policyAgreeButton.addEventListener('click', () => {
+            policyModal.classList.add('hidden');
+            showSurveyStep(3);
+        });
+
+        disagreeAgreeButton.addEventListener('click', () => {
+            disagreeModal.classList.add('hidden');
+            showSurveyStep(3);
+        });
+
+        disagreeCloseButton.addEventListener('click', () => tg.close());
+
+        // --- ФУНКЦИИ ОТОБРАЖЕНИЯ / НАВИГАЦИЯ ---
+        function showSetsView() {
+            currentSetId = null;
+            surveyView.classList.add('hidden');
+            lessonsView.classList.add('hidden');
+            lessonDetailView.classList.add('hidden');
+            setsView.classList.remove('hidden');
+            setsView.classList.add('fade-in');
+            populateSetsList();
+        }
+
+        function showLessonsView(setId) {
+            currentSetId = setId;
+            const selectedSet = magicSets.find(set => set.id === setId);
+            if (!selectedSet) return;
+
+            lessonSetTitle.textContent = selectedSet.name;
+            lessonsList.innerHTML = ''; 
+
+            selectedSet.lessons.forEach(lesson => {
+                const lessonElement = document.createElement('div');
+                lessonElement.className = 'py-3 border-b border-[#e9dccb] cursor-pointer transition-all duration-300 flex items-center space-x-4 hover:bg-white/70 rounded-md p-2';
+                lessonElement.dataset.lessonId = lesson.id;
+                
+                lessonElement.innerHTML = `
+                    <div class="w-24 flex-shrink-0">
+                        <div class="aspect-16-9 w-full bg-[#e9dccb] rounded-md overflow-hidden">
+                            <img src="${lesson.image}" alt="${lesson.name}" class="w-full h-full object-cover" onerror="this.style.display='none'">
+                        </div>
+                    </div>
+                    <span class="flex-1 font-medium text-lg">${lesson.name}</span>
+                `;
+                lessonsList.appendChild(lessonElement);
+            });
+            
+            setsView.classList.add('hidden');
+            lessonDetailView.classList.add('hidden');
+            lessonsView.classList.remove('hidden');
+            lessonsView.classList.add('fade-in');
+        }
+
+        function showLessonDetailView(setId, lessonId) {
+            const set = magicSets.find(s => s.id === setId);
+            const lesson = set?.lessons.find(l => l.id === lessonId);
+            if (!lesson) return;
+
+            lessonDetailImage.src = lesson.image;
+            lessonDetailImage.alt = lesson.name;
+            lessonDetailTitle.textContent = lesson.name;
+
+            watchLessonButton.dataset.setId = setId;
+            watchLessonButton.dataset.lessonId = lessonId;
+            
+            setsView.classList.add('hidden');
+            lessonsView.classList.add('hidden');
+            lessonDetailView.classList.remove('hidden');
+            lessonDetailView.classList.add('fade-in');
+        }
+
+        function populateSetsList() {
+            setsListContainer.innerHTML = '';
+            magicSets.forEach(set => {
+                const setElement = document.createElement('div');
+                setElement.className = 'bg-white/60 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all duration-300 hover:border-[#B8860B] border border-transparent overflow-hidden flex flex-col';
+                setElement.dataset.setId = set.id;
+                
+                setElement.innerHTML = `
+                    <img src="${set.image}" alt="${set.name}" class="w-full h-auto object-cover" onerror="this.style.display='none'">
+                    <h3 class="font-magic text-xl text-center text-[#B8860B] p-4">${set.name}</h3>
+                `;
+                
+                setsListContainer.appendChild(setElement);
+            });
+        }
+
+        // --- ОБРАБОТЧИКИ СОБЫТИЙ ---
+        setsListContainer.addEventListener('click', (event) => {
+            const setCard = event.target.closest('[data-set-id]');
+            if (setCard) {
+                showLessonsView(setCard.dataset.setId);
+            }
+        });
+
+        lessonsList.addEventListener('click', (event) => {
+            const lessonItem = event.target.closest('[data-lesson-id]');
+            if (lessonItem) {
+                const lessonId = lessonItem.dataset.lessonId;
+                showLessonDetailView(currentSetId, lessonId);
+            }
+        });
+
+        watchLessonButton.addEventListener('click', (event) => {
+            const button = event.currentTarget;
+            const setId = button.dataset.setId;
+            const lessonId = button.dataset.lessonId;
+            const dataToSend = `${setId}_${lessonId}`;
+            
+            if (tg.sendData) {
+                tg.sendData(dataToSend);
+                tg.close();
+            } else {
+                console.log('Тестовый режим. Отправка данных:', dataToSend);
+            }
+        });
+
+        backToSetsButton.addEventListener('click', showSetsView);
+        backToLessonsButton.addEventListener('click', () => {
+            if (currentSetId) showLessonsView(currentSetId);
+        });
+    });
+</script>
+
+</body>
+</html>
+
