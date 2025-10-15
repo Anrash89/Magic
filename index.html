@@ -445,8 +445,8 @@
 
         // --- ЛОГИКА ОПРОСА И ИНТЕГРАЦИИ С GOOGLE SHEETS ---
         async function checkSurveyCompletion() {
-            // В реальном приложении раскомментируйте блок try-catch
-            /* try {
+            // ИЗМЕНЕНО: Этот блок теперь активен
+            try {
                 const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=check&userId=${user.id}`);
                 const result = await response.json();
                 if (result.completed) {
@@ -459,9 +459,6 @@
                 // Если сервис недоступен, показываем опрос.
                 showSurveyStep(1);
             }
-            */
-            // Для тестирования всегда показываем опрос. Удалите эту строку в продакшене.
-            showSurveyStep(1); 
         }
 
         async function submitSurvey() {
@@ -472,8 +469,7 @@
             formData.append('age', surveyData.age);
             formData.append('tricks', surveyData.tricks);
 
-            // В реальном приложении раскомментируйте блок try-catch
-            /*
+            // ИЗМЕНЕНО: Этот блок теперь активен
             try {
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
@@ -482,9 +478,7 @@
             } catch (error) {
                 console.error('Ошибка при отправке опроса:', error);
             }
-            */
-           console.log('Данные для отправки:', Object.fromEntries(formData)); // Для теста
-           showSetsView();
+            showSetsView();
         }
 
 
@@ -725,5 +719,4 @@
 
 </body>
 </html>
-
 
