@@ -15,10 +15,10 @@
     <style>
         /* Применение кастомных шрифтов */
         body {
-            font-family: 'EB Garamond', serif; /* Новый элегантный и читаемый шрифт */
-            overscroll-behavior: none; /* Убираем "оттягивание" страницы на мобильных */
-            background-color: #EAE0CF; /* Более темный фон для контраста */
-            color: #4E4234; /* Новый основной цвет текста */
+            font-family: 'EB Garamond', serif;
+            overscroll-behavior: none;
+            background-color: #EAE0CF;
+            color: #4E4234;
         }
         .font-magic {
             font-family: 'Cinzel Decorative', cursive;
@@ -51,14 +51,13 @@
             to { opacity: 1; }
         }
 
-        /* Стиль для "замыливания" краев картинки опроса стал мягче */
         .survey-image-container::after {
             content: '';
             position: absolute;
             inset: 0;
             box-shadow: inset 0 0 30px 10px #FDF2E0;
             pointer-events: none;
-            border-radius: 0.5rem; /* Синхронизируем с радиусом картинки */
+            border-radius: 0.5rem;
         }
         .survey-input {
             border: 2px solid #e9dccb;
@@ -75,14 +74,15 @@
 <body class="overflow-hidden">
 
     <!-- 1. ЭКРАН ЗАГРУЗКИ С ВИДЕО -->
-    <div id="loading-screen" class="fixed inset-0 z-50">
+    <div id="loading-screen" class="fixed inset-0 z-50 flex items-center justify-center">
+        <!-- ИЗМЕНЕНО: object-cover на object-contain, чтобы видео вписывалось в экран, а не обрезалось -->
         <video
             id="intro-video"
             src="intro.mp4"
             autoplay
             muted
             playsinline
-            class="absolute inset-0 w-full h-full object-cover z-0">
+            class="absolute inset-0 w-full h-full object-contain z-0">
         </video>
         <div id="video-fade-overlay" class="absolute inset-0 bg-[#FDF2E0] opacity-0 z-10"></div>
         <div id="unmute-button" class="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer transition-opacity duration-300 z-20">
@@ -654,7 +654,6 @@
             lessonDetailImage.alt = lesson.name;
             lessonDetailTitle.textContent = lesson.name;
 
-            // ИЗМЕНЕНИЕ: Сохраняем путь к картинке для отправки боту
             watchLessonButton.dataset.imagePath = lesson.image;
             
             setsView.classList.add('hidden');
@@ -699,9 +698,8 @@
             const button = event.currentTarget;
             const imagePath = button.dataset.imagePath;
             
-            // ИЗМЕНЕНИЕ: Отправляем боту имя файла без пути и расширения (напр. '02', '201')
-            const filename = imagePath.split('/').pop(); // '02.webp'
-            const dataToSend = filename.split('.')[0]; // '02'
+            const filename = imagePath.split('/').pop();
+            const dataToSend = filename.split('.')[0];
             
             if (tg.sendData) {
                 tg.sendData(dataToSend);
