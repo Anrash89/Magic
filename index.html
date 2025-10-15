@@ -74,15 +74,15 @@
 <body class="overflow-hidden">
 
     <!-- 1. ЭКРАН ЗАГРУЗКИ С ВИДЕО -->
-    <div id="loading-screen" class="fixed inset-0 z-50 flex items-center justify-center">
-        <!-- ИЗМЕНЕНО: object-cover на object-contain, чтобы видео вписывалось в экран, а не обрезалось -->
+    <div id="loading-screen" class="fixed inset-0 z-50 flex items-center justify-center overflow-hidden">
+        <!-- ИЗМЕНЕНО: Возвращен object-cover для заполнения экрана -->
         <video
             id="intro-video"
             src="intro.mp4"
             autoplay
             muted
             playsinline
-            class="absolute inset-0 w-full h-full object-contain z-0">
+            class="absolute inset-0 w-full h-full object-cover z-0">
         </video>
         <div id="video-fade-overlay" class="absolute inset-0 bg-[#FDF2E0] opacity-0 z-10"></div>
         <div id="unmute-button" class="absolute inset-0 bg-black/30 flex items-center justify-center cursor-pointer transition-opacity duration-300 z-20">
@@ -368,9 +368,7 @@
 
     document.addEventListener('DOMContentLoaded', () => {
         // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И КОНСТАНТЫ ---
-
-        // !!! ВАЖНО: Замените эту ссылку на URL вашего опубликованного Google Apps Script.
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSBegPmiE4OGY8ZalZpu301oiojA-D9O9tO-SDT8KH9ImGa1alejmevzVZXIDkD5ew0w/exec'; // <-- ВАША ССЫЛКА ЗДЕСЬ
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSBegPmiE4OGY8ZalZpu301oiojA-D9O9tO-SDT8KH9ImGa1alejmevzVZXIDkD5ew0w/exec'; 
 
         const tg = window.Telegram.WebApp;
         tg.ready();
@@ -444,7 +442,6 @@
 
         // --- ЛОГИКА ОПРОСА И ИНТЕГРАЦИИ С GOOGLE SHEETS ---
         async function checkSurveyCompletion() {
-            // ИЗМЕНЕНО: Этот блок теперь активен
             try {
                 const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=check&userId=${user.id}`);
                 const result = await response.json();
@@ -455,7 +452,6 @@
                 }
             } catch (error) {
                 console.error('Ошибка при проверке опроса:', error);
-                // Если сервис недоступен, показываем опрос.
                 showSurveyStep(1);
             }
         }
@@ -468,7 +464,6 @@
             formData.append('age', surveyData.age);
             formData.append('tricks', surveyData.tricks);
 
-            // ИЗМЕНЕНО: Этот блок теперь активен
             try {
                 await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
