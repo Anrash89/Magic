@@ -8,8 +8,6 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Подключение скрипта Telegram Web App -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Подключение Tone.js для звуков -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <!-- Подключение кастомных шрифтов -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -50,7 +48,7 @@
         /* Стили для нового лоадера */
         #app-loader-progress {
             background-color: #B8860B;
-            transition: width 0.1s linear;
+            transition: width 0.2s ease-out; /* Сделали анимацию плавнее */
         }
         /* Стиль для масштабирования видео */
         .video-container {
@@ -64,6 +62,9 @@
     </style>
 </head>
 <body class="overflow-hidden">
+
+    <!-- Аудиофайл для звука клика -->
+    <audio id="click-sound" src="sounds/click.mp3" preload="auto"></audio>
 
     <!-- 1. ЭКРАН ЗАГРУЗКИ С ВИДЕО -->
     <div id="loading-screen" class="fixed inset-0 z-50">
@@ -110,9 +111,7 @@
     <div id="policy-modal" class="hidden fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-[#FDF2E0] rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col">
             <h2 class="font-magic text-2xl text-center p-4 border-b border-[#e9dccb]">Политика конфиденциальности</h2>
-            <div id="policy-content" class="overflow-y-auto p-6 text-sm space-y-3">
-                <!-- Содержимое политики будет вставлено здесь из JS -->
-            </div>
+            <div id="policy-content" class="overflow-y-auto p-6 text-sm space-y-3"></div>
             <div class="p-4 border-t border-[#e9dccb] text-center">
                 <button data-action="agree-policy-modal" class="bg-[#B8860B] text-white font-bold py-3 px-8 rounded-lg text-lg hover:bg-[#a0760a] transition-colors">Согласен</button>
             </div>
@@ -151,31 +150,24 @@
         const mainContent = document.getElementById('main-content');
         const policyModal = document.getElementById('policy-modal');
         const disagreeModal = document.getElementById('disagree-modal');
+        const clickSound = document.getElementById('click-sound');
         
         let currentSetId = null;
         const surveyData = {};
 
         // --- ИНИЦИАЛИЗАЦИЯ ЗВУКОВ ---
-        let synth;
-        try {
-            synth = new Tone.Synth({
-                oscillator: { type: 'sine' },
-                envelope: { attack: 0.005, decay: 0.1, sustain: 0.3, release: 0.1 }
-            }).toDestination();
-        } catch (e) {
-            console.warn("Tone.js не смог инициализироваться. Звуков не будет.", e);
-        }
-        
         function playSound() {
-            if (synth && Tone.context.state === 'running') {
-                synth.triggerAttackRelease("C5", "8n");
+            if (clickSound) {
+                clickSound.currentTime = 0;
+                clickSound.play().catch(e => console.warn("Не удалось воспроизвести звук:", e));
             }
         }
         
+        // Первый клик по экрану активирует звук
         document.body.addEventListener('click', () => {
-            if (Tone.context.state !== 'running') {
-                Tone.start();
-            }
+           if(clickSound && clickSound.paused) {
+               clickSound.load();
+           }
         }, { once: true });
 
 
@@ -196,18 +188,23 @@
             const loaderProgress = document.getElementById('app-loader-progress');
             const loaderPercent = document.getElementById('app-loader-percent');
             let progress = 0;
+            let loadingDone = false;
+            
+            // Медленно анимируем до 90%
             const interval = setInterval(() => {
-                progress += Math.floor(Math.random() * 5) + 1;
-                if (progress > 100) progress = 100;
+                if(loadingDone) return;
+                progress += Math.floor(Math.random() * 2) + 1;
+                if (progress > 90) progress = 90;
                 loaderProgress.style.width = progress + '%';
                 loaderPercent.textContent = progress + '%';
-                if (progress === 100) {
-                    clearInterval(interval);
-                }
-            }, 50);
+            }, 120); // Замедляем скорость
 
             checkSurveyCompletion().finally(() => {
+                loadingDone = true;
                 clearInterval(interval);
+                
+                // Плавно завершаем до 100%
+                loaderProgress.style.transition = 'width 0.5s ease-in-out';
                 loaderProgress.style.width = '100%';
                 loaderPercent.textContent = '100%';
                 
@@ -219,7 +216,7 @@
                         mainContent.classList.add('fade-in');
                         document.body.classList.remove('overflow-hidden');
                     }, { once: true });
-                }, 300);
+                }, 500); // Задержка после 100%
             });
         }
 
@@ -354,7 +351,6 @@
 
         // --- УПРАВЛЕНИЕ ВИДАМИ (ЭКРАНАМИ) ---
         function showView(viewName, param) {
-            playSound();
             let html = '';
             switch(viewName) {
                 case 'sets':
@@ -371,7 +367,10 @@
                     break;
             }
             mainContent.innerHTML = html;
-            mainContent.scrollTop = 0; // Сбрасываем скролл при смене экрана
+            mainContent.classList.remove('fade-in');
+            void mainContent.offsetWidth; // трюк для перезапуска анимации
+            mainContent.classList.add('fade-in');
+            mainContent.scrollTop = 0;
         }
 
         // --- ЕДИНЫЙ ОБРАБОТЧИК КЛИКОВ ---
@@ -407,7 +406,7 @@
                 case 'save-text':
                 case 'save-text-final': {
                     const inputEl = document.getElementById(inputId);
-                    if (inputEl.value.trim() === '') {
+                    if (!inputEl.value.trim()) {
                         inputEl.classList.add('border-red-500');
                         return;
                     }
