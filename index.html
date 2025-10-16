@@ -49,21 +49,19 @@
             background-color: #B8860B;
             transition: width 0.2s ease-out;
         }
-        /* ИЗМЕНЕНО: Возвращен старый, более удачный метод масштабирования */
+        /* ИЗМЕНЕНО: Стиль для видео, чтобы оно всегда заполняло весь экран */
         .video-container {
             position: absolute;
-            inset: 0;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
             overflow: hidden;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         .video-container video {
-            min-width: 100%;
-            min-height: 100%;
-            width: auto;
-            height: auto;
-            transform: scale(1.15); /* Масштаб 115% для небольшого "отдаления" */
+            width: 100%;
+            height: 100%;
+            object-fit: cover; /* Эта настройка гарантирует полное заполнение экрана */
         }
     </style>
 </head>
@@ -169,7 +167,6 @@
             }
         }
         
-        // Первый клик по экрану активирует звук
         document.body.addEventListener('click', () => {
            if(clickSound && clickSound.paused) {
                clickSound.load();
