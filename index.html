@@ -62,6 +62,14 @@
             height: 100%;
             object-fit: cover;
         }
+        /* Анимация для логотипа */
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); opacity: 0.9; }
+            50% { transform: scale(1.05); opacity: 1; }
+        }
+        .animate-pulse-gentle {
+            animation: pulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
     </style>
 </head>
 <body class="overflow-hidden">
@@ -90,10 +98,8 @@
     <!-- 2. НОВЫЙ ЭКРАН ЗАГРУЗКИ ПРИЛОЖЕНИЯ -->
     <div id="app-loader-screen" class="hidden fixed inset-0 z-40 flex flex-col items-center justify-center bg-[#FDF2E0]">
         <div class="text-center">
-            <svg class="mx-auto h-16 w-16 text-[#B8860B] animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
+            <!-- ИЗМЕНЕНО: SVG заменен на ваш logo.png с плавной анимацией пульсации -->
+            <img src="logo.png" class="mx-auto h-24 w-24 animate-pulse-gentle" alt="Загрузка...">
             <p class="font-magic text-2xl mt-4 text-[#B8860B]">Открываем книгу...</p>
             <div class="w-64 max-w-full bg-white/50 rounded-full h-2.5 mt-4 mx-auto">
                 <div id="app-loader-progress" class="h-2.5 rounded-full" style="width: 0%"></div>
@@ -434,7 +440,7 @@
                     const dataToSend = filename.split('.')[0];
                     if (tg.sendData) {
                         tg.sendData(dataToSend);
-                        // tg.close(); // ИЗМЕНЕНО: Эта строка удалена, чтобы приложение сворачивалось
+                        // tg.close(); // Убрана команда закрытия
                     } else {
                         console.log('Тестовый режим. Отправка данных:', dataToSend);
                     }
