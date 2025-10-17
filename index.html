@@ -434,6 +434,7 @@
                     const dataToSend = filename.split('.')[0];
                     if (tg.sendData) {
                         tg.sendData(dataToSend);
+                        // tg.close(); // ИЗМЕНЕНО: Эта строка удалена, чтобы приложение сворачивалось
                     } else {
                         console.log('Тестовый режим. Отправка данных:', dataToSend);
                     }
