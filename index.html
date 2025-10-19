@@ -173,13 +173,12 @@
             }
         }
         
-        // Запускаем музыку при первом взаимодействии пользователя, чтобы обойти ограничения автозапуска
         document.body.addEventListener('click', () => {
            if(clickSound && clickSound.paused) {
                clickSound.load();
            }
            if (backgroundMusic && backgroundMusic.paused) {
-               backgroundMusic.volume = 0.25; // Устанавливаем громкость фона
+               backgroundMusic.volume = 0.25; 
                backgroundMusic.play().catch(e => console.warn("Не удалось запустить фоновую музыку:", e));
            }
         }, { once: true });
@@ -204,20 +203,18 @@
             let progress = 0;
             let loadingDone = false;
             
-            // Медленно анимируем до 90%
             const interval = setInterval(() => {
                 if(loadingDone) return;
                 progress += Math.floor(Math.random() * 2) + 1;
                 if (progress > 90) progress = 90;
                 loaderProgress.style.width = progress + '%';
                 loaderPercent.textContent = progress + '%';
-            }, 120); // Замедляем скорость
+            }, 120);
 
             checkSurveyCompletion().finally(() => {
                 loadingDone = true;
                 clearInterval(interval);
                 
-                // Плавно завершаем до 100%
                 loaderProgress.style.transition = 'width 0.5s ease-in-out';
                 loaderProgress.style.width = '100%';
                 loaderPercent.textContent = '100%';
@@ -230,26 +227,9 @@
                         mainContent.classList.add('fade-in');
                         document.body.classList.remove('overflow-hidden');
                     }, { once: true });
-                }, 500); // Задержка после 100%
+                }, 500);
             });
         }
-
-        unmuteButton.addEventListener('click', () => {
-            playSound();
-            introVideo.muted = false;
-            unmuteButton.classList.add('fade-out');
-            unmuteButton.addEventListener('animationend', () => unmuteButton.style.display = 'none', { once: true });
-            introVideo.play();
-        }, { once: true });
-        
-        introVideo.addEventListener('loadedmetadata', () => {
-            const videoDuration = introVideo.duration;
-            const fadeStart = videoDuration - 3; 
-            if (fadeStart > 0) setTimeout(() => videoFadeOverlay.classList.add('fade-to-color'), fadeStart * 1000);
-        });
-        introVideo.addEventListener('ended', transitionToApp);
-        setTimeout(transitionToApp, 8000); // Failsafe
-
 
         // --- ЛОГИКА ОПРОСА И GOOGLE SHEETS ---
         async function checkSurveyCompletion() {
@@ -352,7 +332,7 @@
                         </div>
                         <h2 class="font-magic text-2xl sm:text-3xl text-center text-[#4E4234] flex-shrink-0">${lesson.name}</h2>
                         <div class="w-full mt-auto pt-4 flex-shrink-0">
-                             <button data-action="watch-lesson" data-image-path="${lesson.image}" class="w-full max-w-sm mx-auto bg-[#B8860B] text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-[#a0760a] transition-transform duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-3">
+                             <button data-action="watch-lesson" data-lesson-id="${lessonId}" data-image-path="${lesson.image}" class="w-full max-w-sm mx-auto bg-[#B8860B] text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-[#a0760a] transition-transform duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-3">
                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 001.553.832l3-2a1 1 0 000-1.664l-3-2z" /></svg>
                                  <span>Посмотреть урок</span>
                              </button>
@@ -441,19 +421,72 @@
                 case 'show-lesson-detail':
                     showView('lesson-detail', lessonId);
                     break;
-                case 'watch-lesson':
+                case 'watch-lesson': {
                     const filename = imagePath.split('/').pop();
                     const dataToSend = filename.split('.')[0];
+                    
+                    // НОВОЕ: Сохраняем текущее состояние в localStorage
+                    const stateToSave = {
+                        view: 'lesson-detail',
+                        param: lessonId,
+                        currentSetId: currentSetId // Сохраняем ID набора для кнопки "Назад"
+                    };
+                    localStorage.setItem('appState', JSON.stringify(stateToSave));
+
                     if (tg.sendData) {
                         tg.sendData(dataToSend);
+                        tg.close(); // Закрываем Web App, чтобы пользователь увидел видео в чате
                     } else {
                         console.log('Тестовый режим. Отправка данных:', dataToSend);
+                        console.log('Сохраненное состояние:', stateToSave);
                     }
                     break;
+                }
             }
         });
+
+        // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
+        const savedStateJSON = localStorage.getItem('appState');
+        if (savedStateJSON) {
+            // ЕСЛИ ЕСТЬ СОХРАНЕННОЕ СОСТОЯНИЕ - ВОССТАНАВЛИВАЕМ ЕГО
+            localStorage.removeItem('appState'); // Очищаем, чтобы при следующем открытии не восстанавливаться
+            const savedState = JSON.parse(savedStateJSON);
+
+            // Восстанавливаем ID набора для корректной работы кнопки "К урокам"
+            if (savedState.currentSetId) {
+                currentSetId = savedState.currentSetId;
+            }
+
+            // Показываем нужный экран, пропуская загрузку
+            showView(savedState.view, savedState.param);
+            
+            // Убираем экраны загрузки и показываем основной контент
+            if (loadingScreen) loadingScreen.remove();
+            if (appLoaderScreen) appLoaderScreen.remove();
+            mainContent.classList.remove('hidden');
+            document.body.classList.remove('overflow-hidden');
+
+        } else {
+            // ЕСЛИ СОСТОЯНИЯ НЕТ - ОБЫЧНЫЙ ЗАПУСК С НУЛЯ (С ВИДЕО-ИНТРО)
+            unmuteButton.addEventListener('click', () => {
+                playSound();
+                introVideo.muted = false;
+                unmuteButton.classList.add('fade-out');
+                unmuteButton.addEventListener('animationend', () => unmuteButton.style.display = 'none', { once: true });
+                introVideo.play();
+            }, { once: true });
+            
+            introVideo.addEventListener('loadedmetadata', () => {
+                const videoDuration = introVideo.duration;
+                const fadeStart = videoDuration - 3; 
+                if (fadeStart > 0) setTimeout(() => videoFadeOverlay.classList.add('fade-to-color'), fadeStart * 1000);
+            });
+            introVideo.addEventListener('ended', transitionToApp);
+            setTimeout(transitionToApp, 8000); // Страховка на случай, если событие 'ended' не сработает
+        }
     });
 </script>
 
 </body>
 </html>
+
