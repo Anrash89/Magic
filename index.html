@@ -145,7 +145,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         const tg = window.Telegram.WebApp;
         tg.ready();
-        tg.expand(); 
+        tg.expand();
         
         const user = tg.initDataUnsafe?.user || { id: 123456, username: 'testuser' };
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbzSBegPmiE4OGY8ZalZpu301oiojA-D9O9tO-SDT8KH9ImGa1alejmevzVZXIDkD5ew0w/exec';
@@ -163,6 +163,8 @@
         const backgroundMusic = document.getElementById('background-music');
         
         let currentSetId = null;
+        let lastView = null;
+        let lastParam = null;
         const surveyData = {};
 
         // --- ИНИЦИАЛИЗАЦИЯ ЗВУКОВ ---
@@ -173,14 +175,15 @@
             }
         }
         
+        // Запускаем музыку при первом взаимодействии пользователя, чтобы обойти ограничения автозапуска
         document.body.addEventListener('click', () => {
-           if(clickSound && clickSound.paused) {
-               clickSound.load();
-           }
-           if (backgroundMusic && backgroundMusic.paused) {
-               backgroundMusic.volume = 0.25; 
-               backgroundMusic.play().catch(e => console.warn("Не удалось запустить фоновую музыку:", e));
-           }
+            if(clickSound && clickSound.paused) {
+                clickSound.load();
+            }
+            if (backgroundMusic && backgroundMusic.paused) {
+                backgroundMusic.volume = 0.25; // Устанавливаем громкость фона
+                backgroundMusic.play().catch(e => console.warn("Не удалось запустить фоновую музыку:", e));
+            }
         }, { once: true });
 
 
@@ -203,18 +206,20 @@
             let progress = 0;
             let loadingDone = false;
             
+            // Медленно анимируем до 90%
             const interval = setInterval(() => {
                 if(loadingDone) return;
                 progress += Math.floor(Math.random() * 2) + 1;
                 if (progress > 90) progress = 90;
                 loaderProgress.style.width = progress + '%';
                 loaderPercent.textContent = progress + '%';
-            }, 120);
+            }, 120); // Замедляем скорость
 
             checkSurveyCompletion().finally(() => {
                 loadingDone = true;
                 clearInterval(interval);
                 
+                // Плавно завершаем до 100%
                 loaderProgress.style.transition = 'width 0.5s ease-in-out';
                 loaderProgress.style.width = '100%';
                 loaderPercent.textContent = '100%';
@@ -227,13 +232,42 @@
                         mainContent.classList.add('fade-in');
                         document.body.classList.remove('overflow-hidden');
                     }, { once: true });
-                }, 500);
+                }, 500); // Задержка после 100%
             });
         }
+
+        unmuteButton.addEventListener('click', () => {
+            playSound();
+            introVideo.muted = false;
+            unmuteButton.classList.add('fade-out');
+            unmuteButton.addEventListener('animationend', () => unmuteButton.style.display = 'none', { once: true });
+            introVideo.play();
+        }, { once: true });
+        
+        introVideo.addEventListener('loadedmetadata', () => {
+            const videoDuration = introVideo.duration;
+            const fadeStart = videoDuration - 3; 
+            if (fadeStart > 0) setTimeout(() => videoFadeOverlay.classList.add('fade-to-color'), fadeStart * 1000);
+        });
+        introVideo.addEventListener('ended', transitionToApp);
+        setTimeout(transitionToApp, 8000); // Failsafe
+
 
         // --- ЛОГИКА ОПРОСА И GOOGLE SHEETS ---
         async function checkSurveyCompletion() {
             try {
+                // Пытаемся восстановить состояние
+                const savedState = localStorage.getItem('appState');
+                if (savedState) {
+                    const { view, param } = JSON.parse(savedState);
+                    localStorage.removeItem('appState'); // Очищаем после использования
+                    if (view) {
+                         showView(view, param);
+                         return; // Выходим, чтобы не показывать опрос
+                    }
+                }
+                
+                // Если состояния нет, продолжаем как обычно
                 const response = await fetch(`${GOOGLE_SCRIPT_URL}?action=check&userId=${user.id}`);
                 const result = await response.json();
                 if (result.completed) {
@@ -267,10 +301,10 @@
             let setsHTML = '';
             magicSets.forEach(set => {
                 setsHTML += `
-                        <div class="bg-white/60 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all duration-300 hover:border-[#B8860B] border border-transparent overflow-hidden flex flex-col" data-action="show-lessons" data-set-id="${set.id}">
-                            <img src="${set.image}" alt="${set.name}" class="w-full h-auto object-cover" loading="lazy" onerror="this.style.display='none'">
-                            <h3 class="font-magic text-xl text-center text-[#B8860B] p-4">${set.name}</h3>
-                        </div>`;
+                            <div class="bg-white/60 rounded-lg shadow-md cursor-pointer hover:shadow-lg transition-all duration-300 hover:border-[#B8860B] border border-transparent overflow-hidden flex flex-col" data-action="show-lessons" data-set-id="${set.id}">
+                                <img src="${set.image}" alt="${set.name}" class="w-full h-auto object-cover" loading="lazy" onerror="this.style.display='none'">
+                                <h3 class="font-magic text-xl text-center text-[#B8860B] p-4">${set.name}</h3>
+                            </div>`;
             });
             return `
                 <div class="p-4 sm:p-6 flex-grow flex flex-col">
@@ -332,7 +366,7 @@
                         </div>
                         <h2 class="font-magic text-2xl sm:text-3xl text-center text-[#4E4234] flex-shrink-0">${lesson.name}</h2>
                         <div class="w-full mt-auto pt-4 flex-shrink-0">
-                             <button data-action="watch-lesson" data-lesson-id="${lessonId}" data-image-path="${lesson.image}" class="w-full max-w-sm mx-auto bg-[#B8860B] text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-[#a0760a] transition-transform duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-3">
+                             <button data-action="watch-lesson" data-image-path="${lesson.image}" class="w-full max-w-sm mx-auto bg-[#B8860B] text-white font-bold py-4 px-6 rounded-lg text-xl hover:bg-[#a0760a] transition-transform duration-200 hover:scale-105 shadow-lg flex items-center justify-center gap-3">
                                  <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 20 20" fill="currentColor"><path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 001.553.832l3-2a1 1 0 000-1.664l-3-2z" /></svg>
                                  <span>Посмотреть урок</span>
                              </button>
@@ -346,6 +380,9 @@
         // --- УПРАВЛЕНИЕ ВИДАМИ (ЭКРАНАМИ) ---
         function showView(viewName, param) {
             let html = '';
+            lastView = viewName;
+            lastParam = param;
+
             switch(viewName) {
                 case 'sets':
                     html = getSetsViewHTML();
@@ -422,68 +459,22 @@
                     showView('lesson-detail', lessonId);
                     break;
                 case 'watch-lesson': {
+                    // Сохраняем текущее состояние перед закрытием
+                    const appState = { view: lastView, param: lastParam };
+                    localStorage.setItem('appState', JSON.stringify(appState));
+                
                     const filename = imagePath.split('/').pop();
                     const dataToSend = filename.split('.')[0];
-                    
-                    // НОВОЕ: Сохраняем текущее состояние в localStorage
-                    const stateToSave = {
-                        view: 'lesson-detail',
-                        param: lessonId,
-                        currentSetId: currentSetId // Сохраняем ID набора для кнопки "Назад"
-                    };
-                    localStorage.setItem('appState', JSON.stringify(stateToSave));
-
                     if (tg.sendData) {
                         tg.sendData(dataToSend);
-                        tg.close(); // Закрываем Web App, чтобы пользователь увидел видео в чате
+                        tg.close();
                     } else {
                         console.log('Тестовый режим. Отправка данных:', dataToSend);
-                        console.log('Сохраненное состояние:', stateToSave);
                     }
                     break;
                 }
             }
         });
-
-        // --- ИНИЦИАЛИЗАЦИЯ ПРИЛОЖЕНИЯ ---
-        const savedStateJSON = localStorage.getItem('appState');
-        if (savedStateJSON) {
-            // ЕСЛИ ЕСТЬ СОХРАНЕННОЕ СОСТОЯНИЕ - ВОССТАНАВЛИВАЕМ ЕГО
-            localStorage.removeItem('appState'); // Очищаем, чтобы при следующем открытии не восстанавливаться
-            const savedState = JSON.parse(savedStateJSON);
-
-            // Восстанавливаем ID набора для корректной работы кнопки "К урокам"
-            if (savedState.currentSetId) {
-                currentSetId = savedState.currentSetId;
-            }
-
-            // Показываем нужный экран, пропуская загрузку
-            showView(savedState.view, savedState.param);
-            
-            // Убираем экраны загрузки и показываем основной контент
-            if (loadingScreen) loadingScreen.remove();
-            if (appLoaderScreen) appLoaderScreen.remove();
-            mainContent.classList.remove('hidden');
-            document.body.classList.remove('overflow-hidden');
-
-        } else {
-            // ЕСЛИ СОСТОЯНИЯ НЕТ - ОБЫЧНЫЙ ЗАПУСК С НУЛЯ (С ВИДЕО-ИНТРО)
-            unmuteButton.addEventListener('click', () => {
-                playSound();
-                introVideo.muted = false;
-                unmuteButton.classList.add('fade-out');
-                unmuteButton.addEventListener('animationend', () => unmuteButton.style.display = 'none', { once: true });
-                introVideo.play();
-            }, { once: true });
-            
-            introVideo.addEventListener('loadedmetadata', () => {
-                const videoDuration = introVideo.duration;
-                const fadeStart = videoDuration - 3; 
-                if (fadeStart > 0) setTimeout(() => videoFadeOverlay.classList.add('fade-to-color'), fadeStart * 1000);
-            });
-            introVideo.addEventListener('ended', transitionToApp);
-            setTimeout(transitionToApp, 8000); // Страховка на случай, если событие 'ended' не сработает
-        }
     });
 </script>
 
